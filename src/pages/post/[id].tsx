@@ -72,7 +72,7 @@ export const getStaticProps: GetStaticProps<IPostProps> = async ({
 }) => {
   const { id } = params as Params;
 
-  const post = await getPost(id);
+  const post = (await getPost(id)) as unknown as Post;
 
   return {
     props: { post },
