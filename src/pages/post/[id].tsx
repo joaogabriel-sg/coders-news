@@ -1,37 +1,81 @@
+import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
+import { BLOCKS } from "@contentful/rich-text-types";
+import { GetStaticPaths, GetStaticProps } from "next";
 import Head from "next/head";
+
 import { Layout } from "../../components/Layout";
 
-const post = {
-  id: "1",
-  title: "Fortnite Challenges Have Grown Stale",
-  description:
-    "There are many variations of passages of Lorem Ipsum available, but the majority have suffered alteration in some form",
-  thumbnail:
-    "https://patriciaelias.com.br/wp-content/uploads/2021/01/placeholder.png",
+import { getPost, getPosts, Post } from "../../services/content";
+
+interface IPostProps {
+  post: Post;
+}
+
+type Params = {
+  id: string;
 };
 
-export default function Post() {
-  return (
-    <div>
-      <Head>
-        <title>{post.title} | Coders Blog</title>
-        <meta name="description" content="Coders Blog" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+const renderOptions = {
+  renderNode: {
+    [BLOCKS.EMBEDDED_ASSET]: (node) => (
+      <img
+        src={node.data.target.fields.file.url}
+        alt="Content image"
+        height={node.data.target.fields.file.details.height}
+        width={node.data.target.fields.file.details.width}
+      />
+    ),
+  },
+};
 
-      <div className="w-4/5 m-auto min-h-[21.5rem] p-14">
-        <div className="w-full">
-          <img
-            src={post.thumbnail}
-            alt={post.title}
-            className="w-full h-[26rem] object-cover rounded-[1.875rem]"
-          />
+export default function PostPage({ post }: IPostProps) {
+  return (
+    <Layout title={post.fields.title}>
+      <div>
+        <Head>
+          <title>{post.fields.title} | Coders Blog</title>
+          <meta name="description" content="Coders Blog" />
+          <link rel="icon" href="/favicon.ico" />
+        </Head>
+
+        <div className="w-4/5 m-auto min-h-[21.5rem] p-14">
+          <div className="w-full max-w-4xl m-auto">
+            <img
+              src={post.fields.thumbnail.fields.file.url}
+              alt={post.fields.title}
+              className="w-full object-cover rounded-[1.875rem]"
+            />
+          </div>
+
+          <div className="mt-5 whitespace-pre-wrap">
+            {documentToReactComponents(post.fields.content, renderOptions)}
+          </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 }
 
-Post.getLayout = function getLayout(page) {
-  return <Layout title={post.title}>{page}</Layout>;
+export const getStaticPaths: GetStaticPaths = async () => {
+  const posts = await getPosts();
+
+  const paths = posts.map((post) => ({ params: { id: post.sys.id } }));
+
+  return {
+    paths,
+    fallback: "blocking",
+  };
+};
+
+export const getStaticProps: GetStaticProps<IPostProps> = async ({
+  params,
+}) => {
+  const { id } = params as Params;
+
+  const post = await getPost(id);
+
+  return {
+    props: { post },
+    revalidate: 60 * 60 * 24, // 24 hours
+  };
 };
